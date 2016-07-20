@@ -2,6 +2,7 @@
 Offline registry.npmjs.org emulator.
 
 ## Why?
+
 Not all web development is connected to the internet.
 
 I have an air-gapped system on which I develop code for internal use. I want access
@@ -18,3 +19,21 @@ me with a chicken and egg problem.
 
 A webserver written in Python 3, that serves the registry information and the tarballs
 for true offline npm use.
+
+## How?
+
+Run the script:
+
+    python3 npmjs.py --port=8000 --cache=/path/to/cache/directory
+
+Set your npm registry:
+
+    npm config set registry "http://localhost:8000"
+
+Install your desired packages:
+
+    npm install <package_name>
+
+## Caveats
+
+  - Currently only supports single package versions.
