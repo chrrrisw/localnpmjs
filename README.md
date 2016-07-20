@@ -15,6 +15,15 @@ replicate their couchdb database - a ridiculous proposition.
 Sinopia is a caching registry solution, but it requires npm to install it - leaving
 me with a chicken and egg problem.
 
+You can sort-of find a solution by running the following repeatedly:
+
+```bash
+    for i in /path/to/cache/directory/*.tgz; do npm install $i; done
+```
+
+until no more packages need installing, but it takes a long time if you don't
+set your npm registry away from registry.npmjs.org.
+
 ## What?
 
 A webserver written in Python 3, that serves the registry information and the tarballs
