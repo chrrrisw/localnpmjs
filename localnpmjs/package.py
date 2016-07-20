@@ -55,10 +55,14 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name, se
 
         author = package_dict.get('author', '')
         if isinstance(author, str) and author != '':
-            print('AUTHOR IS STRING')
+            print('AUTHOR IS STRING', author)
             m = re.match('(.*)<(.*)>', author)
-            author_name = m.group(1).strip()
-            author_email = m.group(2).strip()
+            if m:
+                author_name = m.group(1).strip()
+                author_email = m.group(2).strip()
+            else:
+                author_name = author
+                author_email = ''
         elif isinstance(author, dict):
             print('AUTHOR IS DICT')
             author_name = author['name']
