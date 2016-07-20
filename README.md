@@ -18,7 +18,7 @@ me with a chicken and egg problem.
 You can sort-of find a solution by running the following repeatedly:
 
 ```bash
-    for i in /path/to/cache/directory/*.tgz; do npm install $i; done
+for i in /path/to/cache/directory/*.tgz; do npm install $i; done
 ```
 
 until no more packages need installing, but it takes a long time if you don't
