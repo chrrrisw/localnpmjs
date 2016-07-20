@@ -33,15 +33,21 @@ for true offline npm use.
 
 Run the script:
 
-    python3 npmjs.py --port=8000 --cache=/path/to/cache/directory
+```bash
+python3 npmjs.py --port=8000 --cache=/path/to/cache/directory
+```
 
 Set your npm registry:
 
-    npm config set registry "http://localhost:8000"
+```bash
+npm config set registry "http://localhost:8000"
+```
 
 Install your desired packages:
 
-    npm install <package_name>
+```bash
+npm install <package_name>
+```
 
 ## Caveats
 
