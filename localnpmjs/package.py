@@ -4,10 +4,36 @@ import os
 import re
 import uuid
 import hashlib
+import datetime
 
 
-def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
-    tf = tarfile.open(os.path.join(cache_dir, tarball_name))
+'''
+_attachments
+_distfiles
+_rev 0-0000000000000000
+_uplinks
+author
+bugs
+description
+dist-tags {latest}
+homepage
+keywords
+license
+maintainers
+name
+readmeFilename
+repository
+time {modified}
+versions
+'''
+
+
+def generate_package_json_from_tarball(cache_dir, package_name, tarball_name, server_address):
+    tarball_path = os.path.join(cache_dir, tarball_name)
+    tarball_stat = os.stat(tarball_path)
+    tarball_mtime = datetime.datetime.fromtimestamp(tarball_stat.st_mtime, tz=datetime.timezone.utc).isoformat()
+    tarball_ctime = datetime.datetime.fromtimestamp(tarball_stat.st_ctime, tz=datetime.timezone.utc).isoformat()
+    tf = tarfile.open(tarball_path)
     package_json = tf.extractfile('package/package.json')
     package_json_str = ''.join([line.decode() for line in package_json])
     package_dict = json.loads(package_json_str)
@@ -18,8 +44,9 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
 
         version = package_dict.get('version', '')
 
+        # Calculate SHA1 sum for tarball
         sha1 = hashlib.sha1()
-        with open(os.path.join(cache_dir, tarball_name), 'rb') as f:
+        with open(tarball_path, 'rb') as f:
             while True:
                 data = f.read(65536)
                 if not data:
@@ -43,13 +70,39 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
 
         description = {}
 
+        description['_attachments'] = {}  # TODO:
         description['_id'] = package_name
         description['_rev'] = '1-{}'.format(uuid.uuid4().hex)  # TODO: Increment number?
-        description['name'] = package_name
+
+        description['author'] = {
+            'name': author_name,
+            'email': author_email
+        }
+
+        description['bugs'] = package_dict.get('bugs', '')
         description['description'] = package_dict.get('description', '')
 
         description['dist-tags'] = {}
         description['dist-tags']['latest'] = version
+
+        description['homepage'] = package_dict.get('homepage', '')
+        description['keywords'] = package_dict.get('keywords', '')
+        description['license'] = package_dict.get('license', '')
+
+        description['maintainers'] = [{
+            'name': author_name,
+            'email': author_email
+        }]
+
+        description['name'] = package_name
+        description['readmeFilename'] = ''  # TODO:
+        description['repository'] = package_dict.get('repository', '')
+
+        description['time'] = {
+            'modified': tarball_mtime,
+            'created': tarball_ctime,
+            'version': tarball_mtime
+        }
 
         description['versions'] = {}
         description['versions'][version] = package_dict
@@ -67,7 +120,7 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
         description['versions'][version]['directories'] = {}
         description['versions'][version]['dist'] = {
             'shasum': sha1.hexdigest(),
-            'tarball': ''
+            'tarball': '{}/{}'.format(server_address, tarball_name)
         }
         description['versions'][version]['gitHead'] = ''
         description['versions'][version]['maintainers'] = [{
@@ -76,43 +129,12 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
         }]
         description['versions'][version]['scripts'] = {}
 
-        description['maintainers'] = [{
-            'name': author_name,
-            'email': author_email
-        }]
-
-        description['time'] = {
-            'modified': '',  # TODO:
-            'created': '',  # TODO:
-            version: ''  # TODO:
-        }
-
-        description['author'] = {
-            'name': author_name,
-            'email': author_email
-        }
-
-        description['repository'] = package_dict.get('repository', '')
-
+        # TODO: Do we need these?
         description['users'] = {}  # TODO:
-
         description['readme'] = ''  # TODO:
-
-        description['homepage'] = package_dict.get('homepage', '')
-
-        description['keywords'] = package_dict.get('keywords', '')
-
         description['contributors'] = package_dict.get('contributors', '')
 
-        description['bugs'] = package_dict.get('bugs', '')
-
-        description['readmeFilename'] = ''  # TODO:
-
-        description['license'] = package_dict.get('license', '')
-
-        description['_attachments'] = {}  # TODO:
-
-        # print(json.dumps(description, sort_keys=True, indent=4))
+        # Now write the json file.
         if os.path.exists(os.path.join(cache_dir, package_name)):
             print('OVERWRITING')
             with open(os.path.join(cache_dir, package_name), 'w') as f:
@@ -126,7 +148,7 @@ def generate_package_json_from_tarball(cache_dir, package_name, tarball_name):
         return False
 
 
-def get_package_json(cache_dir, package_name):
+def get_package_json(cache_dir, package_name, server_address):
     found = False
     for entry in os.listdir(cache_dir):
         if entry.startswith(package_name):
@@ -142,7 +164,8 @@ def get_package_json(cache_dir, package_name):
                 found = generate_package_json_from_tarball(
                     cache_dir=cache_dir,
                     package_name=package_name,
-                    tarball_name=entry)
+                    tarball_name=entry,
+                    server_address=server_address)
 
     if found:
         return package_name

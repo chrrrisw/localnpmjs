@@ -58,7 +58,10 @@ class NPMRequestHandler(BaseHTTPRequestHandler):
                 self.end_headers()
                 self.wfile.write(bytes(TEST_RESPONSE.format(path=self.path), 'utf8'))
 
-        elif package.get_package_json(self.server.cache_dir, package_name):
+        elif package.get_package_json(
+                cache_dir=self.server.cache_dir,
+                package_name=package_name,
+                server_address='http://{}:{}'.format(self.server.server_name, self.server.server_port)):
             # Send the response status code
             self.send_response(200)
 
@@ -101,7 +104,7 @@ class NPMServer(HTTPServer):
 
 
 def run(port, cache_dir):
-    server_address = ('', port)
+    server_address = ('localhost', port)
     httpd = NPMServer(cache_dir, server_address, NPMRequestHandler)
     httpd.serve_forever()
 

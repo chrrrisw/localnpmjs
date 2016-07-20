@@ -37,3 +37,5 @@ Install your desired packages:
 ## Caveats
 
   - Currently only supports single package versions.
+  - It's crude
+  - No https
