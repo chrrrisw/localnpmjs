@@ -3,6 +3,7 @@ from localnpmjs.server import run
 
 
 def main():
+    # Set up the argument parser
     parser = argparse.ArgumentParser(
         description='Offline npmjs.org registry emulator.')
     parser.add_argument(
@@ -20,6 +21,7 @@ def main():
         help='The cache directory.')
     args = parser.parse_args()
 
+    # Run the web server
     run(args.port, args.cache_dir)
 
 

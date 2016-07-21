@@ -31,21 +31,23 @@ for true offline npm use.
 
 ## How?
 
+Fill a cache directory with the tarballs for the packages you want installed.
+
 Run the script:
 
-```bash
+```
 python3 npmjs.py --port=8000 --cache=/path/to/cache/directory
 ```
 
 Set your npm registry:
 
-```bash
+```
 npm config set registry "http://localhost:8000"
 ```
 
 Install your desired packages:
 
-```bash
+```
 npm install <package_name>
 ```
 
