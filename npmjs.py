@@ -7,6 +7,13 @@ def main():
     parser = argparse.ArgumentParser(
         description='Offline npmjs.org registry emulator.')
     parser.add_argument(
+        '-a',
+        '--address',
+        dest='host',
+        type=str,
+        default='127.0.0.1',
+        help='The hostname or IP address.')
+    parser.add_argument(
         '-p',
         '--port',
         dest='port',
@@ -22,7 +29,7 @@ def main():
     args = parser.parse_args()
 
     # Run the web server
-    run(args.port, args.cache_dir)
+    run(args.host, args.port, args.cache_dir)
 
 
 if __name__ == '__main__':
