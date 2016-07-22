@@ -53,6 +53,5 @@ npm install <package_name>
 
 ## Caveats
 
-  - Currently only supports single package versions.
   - It's crude
   - No https
