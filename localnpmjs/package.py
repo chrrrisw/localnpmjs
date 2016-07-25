@@ -5,7 +5,7 @@ import re
 import uuid
 import hashlib
 import datetime
-from distutils.version import StrictVersion
+from distutils.version import LooseVersion
 
 '''
 _attachments
@@ -41,12 +41,12 @@ TARBALL = 'tgz'
 #     package_json_str = ''.join([line.decode() for line in package_json])
 #     package_dict = json.loads(package_json_str)
 #     tf.close()
-# 
+#
 #     if package_dict['name'] == package_name:
 #         print('Name matches package_name')
-# 
+#
 #         version = package_dict.get('version', '')
-# 
+#
 #         # Calculate SHA1 sum for tarball
 #         sha1 = hashlib.sha1()
 #         with open(tarball_path, 'rb') as f:
@@ -55,7 +55,7 @@ TARBALL = 'tgz'
 #                 if not data:
 #                     break
 #                 sha1.update(data)
-# 
+#
 #         author = package_dict.get('author', '')
 #         if isinstance(author, str) and author != '':
 #             print('AUTHOR IS STRING', author)
@@ -74,43 +74,43 @@ TARBALL = 'tgz'
 #             print('EMPTY AUTHOR ', type(author))
 #             author_name = ''
 #             author_email = ''
-# 
+#
 #         description = {}
-# 
+#
 #         description['_attachments'] = {}  # TODO:
 #         description['_id'] = package_name
 #         description['_rev'] = '1-{}'.format(uuid.uuid4().hex)  # TODO: Increment number?
-# 
+#
 #         description['author'] = {
 #             'name': author_name,
 #             'email': author_email
 #         }
-# 
+#
 #         description['bugs'] = package_dict.get('bugs', '')
 #         description['description'] = package_dict.get('description', '')
-# 
+#
 #         description['dist-tags'] = {}
 #         description['dist-tags']['latest'] = version
-# 
+#
 #         description['homepage'] = package_dict.get('homepage', '')
 #         description['keywords'] = package_dict.get('keywords', '')
 #         description['license'] = package_dict.get('license', '')
-# 
+#
 #         description['maintainers'] = [{
 #             'name': author_name,
 #             'email': author_email
 #         }]
-# 
+#
 #         description['name'] = package_name
 #         description['readmeFilename'] = ''  # TODO:
 #         description['repository'] = package_dict.get('repository', '')
-# 
+#
 #         description['time'] = {
 #             'modified': tarball_mtime,
 #             'created': tarball_ctime,
 #             'version': tarball_mtime
 #         }
-# 
+#
 #         description['versions'] = {}
 #         description['versions'][version] = package_dict
 #         # TODO
@@ -135,12 +135,12 @@ TARBALL = 'tgz'
 #             'name': author_name
 #         }]
 #         description['versions'][version]['scripts'] = {}
-# 
+#
 #         # TODO: Do we need these?
 #         description['users'] = {}  # TODO:
 #         description['readme'] = ''  # TODO:
 #         description['contributors'] = package_dict.get('contributors', '')
-# 
+#
 #         # Now write the json file.
 #         if os.path.exists(os.path.join(cache_dir, package_name)):
 #             print('OVERWRITING')
@@ -173,7 +173,7 @@ TARBALL = 'tgz'
 #                     package_name=package_name,
 #                     tarball_name=entry,
 #                     server_address=server_address)
-# 
+#
 #     if found:
 #         return package_name
 #     else:
@@ -229,7 +229,7 @@ class TarballCacher(object):
 
     def _construct_registry_entry(self, package_name):
         versions = [self.cache['tarballs'][t] for t in self.cache['packages'].get(package_name, [])]
-        versions.sort(key=lambda t: StrictVersion(t['version']))
+        versions.sort(key=lambda t: LooseVersion(t['version']))
         # print('Latest Version:', versions[-1]['version'])
         latest = versions[-1]
         # print(latest)
@@ -273,7 +273,14 @@ class TarballCacher(object):
 
         # Extract package.json
         tf = tarfile.open(tarball_path)
-        package_json = tf.extractfile('package/package.json')
+        try:
+            # Usually here
+            package_json = tf.extractfile('package/package.json')
+        except KeyError as e:
+            for n in tf.getnames():
+                print(n)
+                if 'package.json' in n:
+                    package_json = tf.extractfile(n)
         package_json_str = ''.join([line.decode() for line in package_json])
         package_json_dict = json.loads(package_json_str)
         tf.close()
@@ -281,8 +288,6 @@ class TarballCacher(object):
         name = package_json_dict.get('name')
         version = package_json_dict.get('version')
         author = package_json_dict.get('author', '')
-        if isinstance(author, dict):
-            print('AUTHOR IS DICT')
 
         if '_from' not in package_json_dict:
             package_json_dict['_from'] = '.'
@@ -305,7 +310,11 @@ class TarballCacher(object):
             print('\tEXISTS: _npmOperationalInternal')
 
         if '_npmUser' not in package_json_dict:
-            package_json_dict['_npmUser'] = {'name': author}
+            if isinstance(author, dict):
+                # print('AUTHOR IS DICT')
+                package_json_dict['_npmUser'] = author
+            else:
+                package_json_dict['_npmUser'] = {'name': author}
         else:
             print('\tEXISTS: _npmUser')
 
@@ -349,8 +358,8 @@ class TarballCacher(object):
             package_json_dict['maintainers'] = [{
                 'name': author
             }]
-        else:
-            print('\tEXISTS: maintainers')
+        # else:
+        #     print('\tEXISTS: maintainers')
 
         if 'scripts' not in package_json_dict:
             package_json_dict['scripts'] = {}
@@ -377,13 +386,16 @@ class TarballCacher(object):
     def get_package_json(self, package_name):
         need_update = False
 
+        # Re-scan directory to see if any new tarballs added
+        self._update_cache()
+
         # Iterate through all tarballs that might match
         for key, value in self.cache['tarballs'].items():
             if value['name'] == package_name:
                 # Definite match
-                print('\tExisting tarball', key)
+                # print('\tExisting tarball', key)
                 if self.server_address not in value['json']['dist']['tarball']:
-                    print('Changed server address')
+                    print('\tChanged server address for', key)
                     value['json']['dist']['tarball'] = '{}/{}'.format(self.server_address, key)
                     need_update = True
             elif key.startswith(package_name) and value['name'] == '':
@@ -395,8 +407,7 @@ class TarballCacher(object):
         if need_update:
             self._write_cache()
 
-        # Return a boolean indicating whether the package exists
-        # return (package_name in self.cache['packages'])
+        # Return a registry entry, or False
         if package_name in self.cache['packages']:
             return self._construct_registry_entry(package_name)
         else:

@@ -61,16 +61,10 @@ TEST_RESPONSE = '''
 #         struct.pack('256s', ifname[:15])
 #     )[20:24])
 
-class NPMRequestHandler(BaseHTTPRequestHandler):
-    # def do_HEAD(self):
-    #     print('do_HEAD', self.command)
-    #     print(self.path)
-    #     self.send_response(200)
-    #     self.send_header("Content-type", "text/html")  # application/json
-    #     self.end_headers()
 
+class NPMRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
-        print('do_GET', self.command, self.path, self.server.cache_dir)
+        # print('do_GET', self.command, self.path, self.server.cache_dir)
 
         # Serve home page separately
         if self.path != '/':
@@ -81,7 +75,7 @@ class NPMRequestHandler(BaseHTTPRequestHandler):
 
             #   application/gzip
             if package_name.endswith('gz'):
-                print('\tGETTING TARBALL', package_name)
+                # print('\tGETTING TARBALL', package_name)
                 if os.path.exists(package_path):
                     # Send the response status code
                     self.send_response(200)
@@ -148,7 +142,7 @@ class NPMRequestHandler(BaseHTTPRequestHandler):
             home_page = HOME_PAGE.format(packages=''.join(packages))
             self.wfile.write(bytes(home_page, 'utf8'))
 
-# class NPMServer(socketserver.ThreadingMixIn, HTTPServer):
+
 class NPMServer(HTTPServer):
     def __init__(self, cache_dir, *args, **kwargs):
         self.cache_dir = cache_dir
@@ -156,16 +150,11 @@ class NPMServer(HTTPServer):
         print(self.server_address)
         self.cacher = package.TarballCacher(
             cache_dir=cache_dir,
-            server_address=' http://{}:{}'.format( self.server_name, self.server_port))
+            server_address=' http://{}:{}'.format(self.server_name, self.server_port))
         print('Serving {} on http://{}:{}'.format(self.cache_dir, self.server_name, self.server_port))
-
-# def sigint_handler(signum, frame):
-#     httpd.shutdown()
-#     httpd.server_close()
 
 
 def run(host, port, cache_dir):
-    # signal.signal(signal.SIGINT, sigint_handler)
     server_address = (host, port)
     httpd = NPMServer(cache_dir, server_address, NPMRequestHandler)
     try:
@@ -174,9 +163,6 @@ def run(host, port, cache_dir):
         print('Shutting down')
         httpd.shutdown()
         httpd.server_close()
-    # server_thread = threading.Thread(target=httpd.serve_forever)
-    # server_thread.daemon = True
-    # server_thread.start()
 
 
 def main():
