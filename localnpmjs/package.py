@@ -6,6 +6,7 @@ import uuid
 import hashlib
 import datetime
 from distutils.version import LooseVersion
+from urllib.parse import unquote
 
 '''
 _attachments
@@ -186,7 +187,8 @@ class TarballCacher(object):
     def __init__(self, cache_dir, server_address, force_new=False):
         self.cache_dir = cache_dir
         self.server_address = server_address
-        self.cache_file = os.path.join(self.cache_dir, '.cache')
+        # self.cache_file = os.path.join(self.cache_dir, '.cache')
+        self.cache_file = os.path.join('.', '.cache')
         if os.path.exists(self.cache_file):
             # read it in
             with open(self.cache_file, 'r') as f:
@@ -204,6 +206,7 @@ class TarballCacher(object):
             json.dump(self.cache, f, indent=4, sort_keys=True)
 
     def _update_cache(self, force_new=False):
+        ''''''
         # print('_update_cache')
         tarballs = [f for f in os.listdir(self.cache_dir) if f.endswith(TARBALL)]
         new_tarballs = False
@@ -227,15 +230,15 @@ class TarballCacher(object):
             self._write_cache()
         return new_tarballs or force_new
 
-    def _construct_registry_entry(self, package_name):
-        versions = [self.cache['tarballs'][t] for t in self.cache['packages'].get(package_name, [])]
+    def _construct_registry_entry(self, unquoted_package_name):
+        versions = [self.cache['tarballs'][t] for t in self.cache['packages'].get(unquoted_package_name, [])]
         versions.sort(key=lambda t: LooseVersion(t['version']))
         # print('Latest Version:', versions[-1]['version'])
         latest = versions[-1]
         # print(latest)
         registry = {
             '_attachments': latest['json'].get('_attachments', {}),  # TODO: Is this correct?
-            '_id': package_name,
+            '_id': unquoted_package_name,
             '_rev': '1-{}'.format(uuid.uuid4().hex),  # TODO: Increment number?
             'author': latest['json'].get('author', ''),  # TODO: Should this be a dict?
             'bugs': latest['json'].get('bugs', ''),
@@ -245,7 +248,7 @@ class TarballCacher(object):
             'keywords': latest['json'].get('keywords', ''),
             'license': latest['json'].get('license', ''),
             'maintainers': latest['json'].get('maintainers', []),  # TODO:
-            'name': package_name,
+            'name': unquoted_package_name,
             'readmeFilename': latest['json'].get('readmeFilename', ''),
             'repository': latest['json'].get('repository', ''),
             'time': {},
@@ -278,7 +281,7 @@ class TarballCacher(object):
             package_json = tf.extractfile('package/package.json')
         except KeyError as e:
             for n in tf.getnames():
-                print(n)
+                # print('\tFound file', n)
                 if 'package.json' in n:
                     package_json = tf.extractfile(n)
         package_json_str = ''.join([line.decode() for line in package_json])
@@ -384,6 +387,7 @@ class TarballCacher(object):
         return self.cache['packages']
 
     def get_package_json(self, package_name):
+        unquoted_package_name = unquote(package_name)
         need_update = False
 
         # Re-scan directory to see if any new tarballs added
@@ -391,15 +395,17 @@ class TarballCacher(object):
 
         # Iterate through all tarballs that might match
         for key, value in self.cache['tarballs'].items():
-            if value['name'] == package_name:
+            if value['name'] == unquoted_package_name:
                 # Definite match
                 # print('\tExisting tarball', key)
                 if self.server_address not in value['json']['dist']['tarball']:
                     print('\tChanged server address for', key)
                     value['json']['dist']['tarball'] = '{}/{}'.format(self.server_address, key)
                     need_update = True
+
             elif key.startswith(package_name) and value['name'] == '':
-                # Possible match
+                # If the name of the tarball starts with the quoted package name we have a
+                # possible match
                 print('\tPossible tarball', key)
                 self._extract_package_json(key)
                 need_update = True
@@ -408,8 +414,8 @@ class TarballCacher(object):
             self._write_cache()
 
         # Return a registry entry, or False
-        if package_name in self.cache['packages']:
-            return self._construct_registry_entry(package_name)
+        if unquoted_package_name in self.cache['packages']:
+            return self._construct_registry_entry(unquoted_package_name)
         else:
             return False
 

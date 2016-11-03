@@ -147,7 +147,7 @@ class NPMServer(HTTPServer):
     def __init__(self, cache_dir, *args, **kwargs):
         self.cache_dir = cache_dir
         super().__init__(*args, **kwargs)
-        print(self.server_address)
+        print('server_address', self.server_address)
         self.cacher = package.TarballCacher(
             cache_dir=cache_dir,
             server_address=' http://{}:{}'.format(self.server_name, self.server_port))
@@ -156,6 +156,7 @@ class NPMServer(HTTPServer):
 
 def run(host, port, cache_dir):
     server_address = (host, port)
+    print(host, port)
     httpd = NPMServer(cache_dir, server_address, NPMRequestHandler)
     try:
         httpd.serve_forever()
